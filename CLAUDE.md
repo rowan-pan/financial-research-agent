@@ -12,8 +12,7 @@ Autonomous financial research agent that scans the last 15 days of market signal
 - **NewsAPI** (`newsapi-python`) — 15-day cross-market headline fetch by topic/keyword
 - **Alpha Vantage** — earnings estimates, sector snapshots, economic indicators
 - **SEC EDGAR** — 8-K/10-K filings via public REST API (no key required)
-- **matplotlib** — chart generation (PNG files)
-- **Streamlit** — web UI (`app.py`), hosted on Streamlit Community Cloud
+- **matplotlib + seaborn** — chart generation (PNG files)
 - **python-dotenv** — API key management via `.env`
 
 ## Architecture
@@ -27,9 +26,8 @@ Autonomous financial research agent that scans the last 15 days of market signal
 | `agents/_utils.py` | Shared helpers: JSON fence-stripping, API retry-with-backoff. | No |
 | `reporting/` | Generate output (markdown, charts, Mermaid diagram, sources). | Yes (synthesizer only) |
 | `prompts/` | Prompt templates as plain `.md` files. No logic. | N/A |
-| `pipeline.py` | Core pipeline logic. Called by both `main.py` and `app.py`. | No |
+| `pipeline.py` | Core pipeline logic. Called by `main.py`. | No |
 | `main.py` | CLI entry point. Parses args, calls `pipeline.py`. | No |
-| `app.py` | Streamlit web UI. Renders interface, calls `pipeline.py`. | No |
 
 **Never put data-fetching logic in `agents/`. Never put reasoning logic in `tools/`.**
 
@@ -51,7 +49,7 @@ REASONING_MODEL = "claude-sonnet-4-6"   # used by all agents
 SYNTHESIS_MODEL = "claude-sonnet-4-6"   # used by reporting/synthesizer.py
 ```
 
-When the user passes `--quality high` (CLI) or selects "High Quality" in the Streamlit UI, both constants switch to `"claude-opus-4-6"`. Default is Sonnet throughout. Model selection is always the user's decision — never escalate automatically. Do not hardcode model strings anywhere other than `pipeline.py`.
+When the user passes `--quality high`, both constants switch to `"claude-opus-4-6"`. Default is Sonnet throughout. Model selection is always the user's decision — never escalate automatically. Do not hardcode model strings anywhere other than `pipeline.py`.
 
 ### Execution tracer
 
@@ -70,7 +68,7 @@ pipeline.py
   7. reporting/visualizer.py — generate PNG charts
   8. reporting/tracer.py — render Mermaid execution diagram into report.md
   9. Write report to reports/<YYYY-MM-DD>_<theme-slug>/
-  10. git commit (if --commit flag or Streamlit toggle)
+  10. git commit (if --commit flag)
 ```
 
 ## Entry Points
@@ -82,12 +80,6 @@ python main.py --topic "AI chip demand"                 # specific topic, Sonnet
 python main.py --topic "AI chip demand" --quality high  # use Opus
 python main.py --topic "AI chip demand" --commit        # auto-commit report
 ```
-
-### Web UI (`app.py`)
-```bash
-streamlit run app.py
-```
-Local Streamlit UI. Not hosted — run locally and share reports directly.
 
 ## Report Output Structure
 
@@ -152,5 +144,5 @@ Do not expand to crypto, FX, or fixed income without explicit instruction.
 - Do not mock API responses in production code paths
 - Do not put prompt text inline in Python — always load from `prompts/`
 - Do not make agents stateful — each agent function takes input, returns output, no side effects beyond the tracer
-- Do not escalate models automatically — model selection is always the user's decision via `--quality` or the Streamlit toggle
+- Do not escalate models automatically — model selection is always the user's decision via `--quality`
 - Do not commit `.env`, `data/`, or `__pycache__`

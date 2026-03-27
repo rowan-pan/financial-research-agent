@@ -51,11 +51,6 @@ python main.py --topic "AI chip demand" --quality high
 python main.py --topic "AI chip demand" --commit
 ```
 
-### Web UI
-```bash
-streamlit run app.py
-```
-
 ## Setup
 
 ```bash
@@ -81,8 +76,7 @@ yfinance and SEC EDGAR require no API key.
 ```
 financial-research-agent/
 ├── main.py                         # CLI entry point
-├── app.py                          # Streamlit web UI entry point
-├── pipeline.py                     # Core pipeline logic (shared by main.py + app.py)
+├── pipeline.py                     # Core pipeline logic
 ├── requirements.txt
 ├── .env.example
 │
