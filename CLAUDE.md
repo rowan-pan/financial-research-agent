@@ -24,7 +24,8 @@ Autonomous financial research agent that scans the last 15 days of market signal
 |-------------|------|-----------------|
 | `tools/` | Fetch raw data only. No reasoning, no formatting. | No |
 | `agents/` | Reason over data. Each module wraps a Claude tool-use loop. | Yes |
-| `reporting/` | Generate output (markdown, charts, Mermaid diagram). | Yes (synthesizer only) |
+| `agents/_utils.py` | Shared helpers: JSON fence-stripping, API retry-with-backoff. | No |
+| `reporting/` | Generate output (markdown, charts, Mermaid diagram, sources). | Yes (synthesizer only) |
 | `prompts/` | Prompt templates as plain `.md` files. No logic. | N/A |
 | `pipeline.py` | Core pipeline logic. Called by both `main.py` and `app.py`. | No |
 | `main.py` | CLI entry point. Parses args, calls `pipeline.py`. | No |
@@ -86,17 +87,18 @@ python main.py --topic "AI chip demand" --commit        # auto-commit report
 ```bash
 streamlit run app.py
 ```
-Hosted on Streamlit Community Cloud, connected to the GitHub repo. Auto-deploys on every push to `main`. API keys stored in Streamlit secrets (not in repo).
+Local Streamlit UI. Not hosted — run locally and share reports directly.
 
 ## Report Output Structure
 
 ```
 reports/YYYY-MM-DD_<theme-slug>/
-├── report.md                   ← narrative + embedded Mermaid execution diagram
+├── report.md                   ← narrative + sources cited + Mermaid execution diagram
 └── charts/
-    ├── episodes_indexed.png    ← historical episodes overlaid, day 0 = trigger
-    ├── return_distribution.png ← return histogram across episodes
-    └── correlation_heatmap.png ← market condition similarity across episodes
+    ├── episodes_indexed.png    ← historical episodes overlaid per hypothesis, day 0 = trigger
+    ├── return_distribution.png ← grouped bar chart of returns across all hypotheses
+    ├── risk_return.png         ← risk/return scatter (avg drawdown vs median return)
+    └── correlation_heatmap.png ← hypothesis performance summary (win rate, return, EV, n)
 ```
 
 - Report folders are **committed to git** (`reports/` is tracked)
@@ -106,7 +108,7 @@ reports/YYYY-MM-DD_<theme-slug>/
 
 ## Environment Variables
 
-All API keys live in `.env` locally (gitignored) and in Streamlit Cloud secrets for the hosted app. Never hardcode keys. Never commit `.env`.
+All API keys live in `.env` locally (gitignored). Never hardcode keys. Never commit `.env`.
 
 ```
 ANTHROPIC_API_KEY=

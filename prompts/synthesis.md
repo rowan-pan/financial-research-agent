@@ -14,7 +14,7 @@ The report must include:
 2-3 paragraphs. The theme, why it matters now, and the top 1-2 investment ideas in plain language.
 
 ## Market Theme
-What is happening, why, and what the market signals show.
+What is happening, why, and what the market signals show. If a `news_scan_window` is provided in the input, include a sentence stating the date range of news analysed (e.g. "Based on analysis of financial news from March 12–27, 2026...").
 
 ## Investment Hypotheses
 For each hypothesis: a dedicated section with rationale, conviction, and key risk. Present as a readable narrative, not a data dump.
@@ -35,3 +35,4 @@ Tone: precise, direct, professional. Write for someone who will make a real capi
 
 Do not include a title line — the report header will be added programmatically.
 Do not include the Mermaid execution diagram — that will be appended separately.
+Do not include a Sources section — news article citations will be appended separately.

@@ -24,11 +24,12 @@ Each run produces a folder under `reports/`:
 
 ```
 reports/2026-03-27_ai-chip-demand/
-├── report.md                   ← full narrative + embedded Mermaid execution diagram
+├── report.md                   ← full narrative + sources cited + Mermaid execution diagram
 └── charts/
-    ├── episodes_indexed.png    ← historical episodes overlaid, day 0 = trigger
-    ├── return_distribution.png ← return histogram across episodes
-    └── correlation_heatmap.png ← market condition similarity across episodes
+    ├── episodes_indexed.png    ← historical episodes overlaid per hypothesis, day 0 = trigger
+    ├── return_distribution.png ← grouped bar chart of returns across all hypotheses
+    ├── risk_return.png         ← risk/return scatter (avg drawdown vs median return)
+    └── correlation_heatmap.png ← hypothesis performance summary (win rate, return, EV, n)
 ```
 
 Reports are committed to git. Raw data cache (`data/`) is gitignored.
@@ -54,8 +55,6 @@ python main.py --topic "AI chip demand" --commit
 ```bash
 streamlit run app.py
 ```
-
-Or visit the hosted version on Streamlit Community Cloud (auto-deploys from `main` branch).
 
 ## Setup
 
@@ -88,6 +87,7 @@ financial-research-agent/
 ├── .env.example
 │
 ├── agents/                         # Claude-powered reasoning modules
+│   ├── _utils.py                   # Shared: JSON parsing, API retry-with-backoff
 │   ├── theme_detector.py           # Identify top financial theme from signals
 │   ├── hypothesis_generator.py     # Generate structured investment hypotheses
 │   ├── precedent_finder.py         # Find analogous historical episodes
@@ -101,8 +101,8 @@ financial-research-agent/
 │
 ├── reporting/                      # Output generation
 │   ├── synthesizer.py              # Claude: write markdown narrative
-│   ├── visualizer.py               # matplotlib: market charts (PNG)
-│   └── tracer.py                   # Record execution trace → Mermaid diagram
+│   ├── visualizer.py               # matplotlib + seaborn: market charts (PNG)
+│   └── tracer.py                   # Record execution trace → Mermaid diagram + sources
 │
 ├── prompts/                        # Prompt templates (plain .md files)
 │   ├── theme_detection.md
