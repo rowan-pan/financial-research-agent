@@ -18,6 +18,56 @@ SYNTHESIS_MODEL = "claude-sonnet-4-6"
 REPORTS_DIR = Path(__file__).parent / "reports"
 
 
+def _build_return_attribution_table(
+    hypotheses: list[dict],
+    backtest_results: list[dict],
+) -> str:
+    """
+    Build a markdown Return Attribution table: one row per episode.
+    Columns: Hypothesis | Episode | Period | Raw Return | SPY Return | Abnormal Return | Beta (mkt) | Model
+    Followed by the methodology footnote.
+    """
+    rows = [
+        "| Hypothesis | Episode | Period | Raw Return | SPY Return | Abnormal Return | Beta (mkt) | Model |",
+        "|------------|---------|--------|-----------|-----------|----------------|-----------|-------|",
+    ]
+
+    def _fmt(val, suffix="%", sign=True):
+        if val is None:
+            return "N/A"
+        return f"{'+' if sign and val > 0 else ''}{val:.1f}{suffix}"
+
+    for hypo, bt in zip(hypotheses, backtest_results):
+        ticker = hypo["ticker"]
+        direction = hypo["direction"].capitalize()
+        label = f"{ticker} ({direction})"
+        for ep in bt.get("episodes", []):
+            if not ep.get("data_available"):
+                continue
+            ep_label = ep.get("episode_label", "—")
+            start = ep.get("start_date", "")[:7]
+            end = ep.get("end_date", "")[:7]
+            period = f"{start} – {end}" if start and end else "—"
+            raw = _fmt(ep.get("actual_return_pct"))
+            spy = _fmt(ep.get("spy_return_pct"))
+            abnormal = _fmt(ep.get("abnormal_return_pct"))
+            beta = _fmt(ep.get("beta_market"), suffix="", sign=False) if ep.get("beta_market") is not None else "N/A"
+            model = ep.get("model_used", "raw").upper()
+            rows.append(f"| {label} | {ep_label} | {period} | {raw} | {spy} | {abnormal} | {beta} | {model} |")
+
+    footnote = (
+        "\n*Abnormal returns are estimated using a two-factor OLS market model "
+        "(market + sector ETF), with betas estimated over the 252 trading days preceding "
+        "each episode trigger date. This approach isolates firm-specific return from broad "
+        "market and sector-wide movements, following standard event study methodology. "
+        "Where sector ETF data is unavailable or pre-period R² < 0.1, a single-factor "
+        "(SPY-only) model is used (1F). Where fewer than 60 pre-period trading days are "
+        "available, raw returns are reported (RAW).*"
+    )
+
+    return "\n".join(rows) + "\n" + footnote
+
+
 def _slug(text: str) -> str:
     """Convert theme text to a safe directory slug."""
     s = text.lower()
@@ -130,6 +180,18 @@ def run_pipeline(
         "![Risk / Return](charts/risk_return.png)\n\n"
         "![Hypothesis Performance Summary](charts/correlation_heatmap.png)\n"
     )
+
+    # Insert Return Attribution table between Backtest Summary and Risk Considerations
+    attribution_md = _build_return_attribution_table(hypotheses, backtest_results)
+    attribution_section = "\n\n## Return Attribution\n\n" + attribution_md
+    if "## Risk Considerations" in narrative:
+        narrative = narrative.replace(
+            "## Risk Considerations",
+            attribution_section + "\n\n## Risk Considerations",
+            1,
+        )
+    else:
+        narrative += attribution_section
 
     sources_section = "\n\n---\n\n" + trace.sources_section() if trace.sources else ""
     execution_section = "\n\n---\n\n## Execution Trace\n\n" + trace.to_mermaid() + "\n"

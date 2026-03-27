@@ -15,6 +15,33 @@ CACHE_DIR.mkdir(exist_ok=True)
 
 SECTOR_ETFS = ["XLK", "XLE", "XLF", "XLV", "XLI", "XLY", "XLP", "XLB", "XLU", "XLRE", "XLC"]
 
+SECTOR_ETF_MAP = {
+    "Financial Services": "XLF",
+    "Technology": "QQQ",
+    "Consumer Cyclical": "XLY",
+    "Consumer Defensive": "XLP",
+    "Healthcare": "XLV",
+    "Energy": "XLE",
+    "Industrials": "XLI",
+    "Utilities": "XLU",
+    "Real Estate": "VNQ",
+    "Materials": "XLB",
+    "Communication Services": "XLC",
+}
+
+
+def fetch_sector_etf(ticker: str) -> str | None:
+    """
+    Return the most appropriate sector ETF for a ticker based on its yfinance sector
+    classification, or None if the sector is unknown or unmapped.
+    Used by the backtester to select the second factor in the OLS market model.
+    """
+    try:
+        sector = yf.Ticker(ticker).info.get("sector", "")
+        return SECTOR_ETF_MAP.get(sector)
+    except Exception:
+        return None
+
 
 def fetch_price_history(ticker: str, period: str = "2y") -> list[dict]:
     """
@@ -149,11 +176,20 @@ def fetch_price_window(ticker: str, start: str, end: str) -> list[dict]:
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = df.columns.get_level_values(0)
 
+    # After flattening, duplicate column names can cause row["Close"] to return a
+    # Series instead of a scalar. Use the column Series directly to avoid this.
+    closes = df["Close"]
+    volumes = df["Volume"]
+    if isinstance(closes, pd.DataFrame):
+        closes = closes.iloc[:, 0]
+    if isinstance(volumes, pd.DataFrame):
+        volumes = volumes.iloc[:, 0]
+
     return [
         {
             "date": str(idx.date()),
-            "close": round(float(row["Close"]), 4),
-            "volume": int(row["Volume"]),
+            "close": round(float(closes.loc[idx]), 4),
+            "volume": int(volumes.loc[idx]) if not pd.isna(volumes.loc[idx]) else 0,
         }
-        for idx, row in df.iterrows()
+        for idx in df.index
     ]

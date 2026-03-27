@@ -4,6 +4,7 @@ Generate charts for each hypothesis using matplotlib.
 Produces three PNGs per report: episodes_indexed, return_distribution, correlation_heatmap.
 """
 
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import matplotlib
@@ -19,23 +20,38 @@ from tools.market_data import fetch_price_window
 
 
 def _get_episode_prices(episodes: list[dict], ticker: str) -> list[dict]:
-    """Fetch price series for each episode, normalized to day-0 = 100."""
+    """
+    Fetch price series for each episode as a full event study.
+    Fetches 45 calendar days before start_date (≈30 trading days) through
+    90 days after (≈60 trading days). Normalizes to 100 at day 0 (the trigger).
+    Returns days (integer offsets from day 0) and values.
+    """
     series = []
     for ep in episodes:
         comparable = ep.get("comparable_ticker", ticker)
         start = ep.get("start_date", "")
-        end = ep.get("end_date", "")
-        if not start or not end:
+        if not start:
             continue
-        prices = fetch_price_window(comparable, start, end)
+        day0_dt = datetime.strptime(start, "%Y-%m-%d")
+        fetch_start = (day0_dt - timedelta(days=45)).strftime("%Y-%m-%d")
+        fetch_end   = (day0_dt + timedelta(days=90)).strftime("%Y-%m-%d")
+        prices = fetch_price_window(comparable, fetch_start, fetch_end)
         if len(prices) < 5:
             continue
+        dates = [p["date"] for p in prices]
+        day0_idx = next((i for i, d in enumerate(dates) if d >= start), None)
+        if day0_idx is None:
+            continue
+        base = prices[day0_idx]["close"]
+        if not base:
+            continue
         closes = [p["close"] for p in prices]
-        base = closes[0]
-        normalized = [c / base * 100 for c in closes]
+        values = [c / base * 100 for c in closes]
+        days   = list(range(-day0_idx, len(closes) - day0_idx))
         series.append({
-            "label": ep.get("episode_label", start[:4]),
-            "values": normalized,
+            "label":      ep.get("episode_label", start[:4]),
+            "days":       days,
+            "values":     values,
             "similarity": ep.get("similarity", "medium"),
         })
     return series
@@ -47,8 +63,9 @@ def plot_episodes_indexed(
     charts_dir: Path,
 ) -> Path:
     """
-    Indexed price chart: one subplot per hypothesis, all historical episodes overlaid.
-    Day 0 = 100. Each hypothesis gets its own panel with distinct episode colors.
+    Event study chart: one subplot per hypothesis, all historical episodes overlaid.
+    Shows 30 trading days before trigger (dashed/faded) and 60 days after (solid/bright).
+    Day 0 = 100 (trigger date). Shaded background distinguishes pre/post zones.
     """
     n = len(hypotheses)
     fig, axes = plt.subplots(n, 1, figsize=(10, 4 * n), squeeze=False)
@@ -65,19 +82,50 @@ def plot_episodes_indexed(
         episodes = precedents.get(ticker, [])
         series = _get_episode_prices(episodes, ticker)
 
+        all_days = [d for s in series for d in s["days"]]
+        min_day = min(all_days) if all_days else -30
+        max_day = max(all_days) if all_days else 60
+
+        # Shaded background zones
+        ax.axvspan(min_day, 0, alpha=0.06, color="#3498db", zorder=0)
+        ax.axvspan(0, max_day, alpha=0.04, color="#2ecc71", zorder=0)
+
         for i, s in enumerate(series):
             color = ticker_colors[i % len(ticker_colors)]
-            days = list(range(len(s["values"])))
-            ax.plot(days, s["values"], color=color, linewidth=1.5, label=s["label"], alpha=0.85)
+            days   = s["days"]
+            values = s["values"]
 
-        ax.axhline(100, color="gray", linestyle="--", linewidth=0.8, alpha=0.6)
+            pre_days  = [d for d in days if d <= 0]
+            pre_vals  = [values[j] for j, d in enumerate(days) if d <= 0]
+            post_days = [d for d in days if d >= 0]
+            post_vals = [values[j] for j, d in enumerate(days) if d >= 0]
+
+            if pre_days:
+                ax.plot(pre_days, pre_vals, color=color, linewidth=1.5,
+                        linestyle="--", alpha=0.45, label=s["label"])
+            if post_days:
+                ax.plot(post_days, post_vals, color=color, linewidth=1.5,
+                        linestyle="-", alpha=0.9,
+                        label=None if pre_days else s["label"])
+
+        # Trigger line and zone labels (drawn after data so ylim is set)
+        ax.axvline(0, color="gray", linestyle="--", linewidth=1.0, alpha=0.8, zorder=2)
+        ylo, yhi = ax.get_ylim()
+        ax.text(0.5, yhi - (yhi - ylo) * 0.04,
+                "Trigger", fontsize=7, color="gray", ha="left", va="top")
+        ax.text(min_day + 0.5, ylo + (yhi - ylo) * 0.02,
+                "Pre-event", fontsize=7, color="#3498db", alpha=0.7, va="bottom")
+        ax.text(1, ylo + (yhi - ylo) * 0.02,
+                "Post-event", fontsize=7, color="#2ecc71", alpha=0.7, va="bottom")
+
+        ax.axhline(100, color="gray", linestyle="--", linewidth=0.8, alpha=0.4)
         ax.set_title(f"{ticker} — Historical Episodes ({direction.upper()})", fontsize=10)
         ax.set_ylabel("Indexed (day 0 = 100)", fontsize=8)
         if series:
             ax.legend(fontsize=7, loc="upper left")
         ax.grid(True, alpha=0.3)
 
-    axes[-1][0].set_xlabel("Days from trigger event")
+    axes[-1][0].set_xlabel("Trading days relative to trigger")
     plt.tight_layout()
 
     out = charts_dir / "episodes_indexed.png"

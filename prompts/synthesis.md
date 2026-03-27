@@ -23,7 +23,7 @@ For each hypothesis: a dedicated section with rationale, conviction, and key ris
 What the precedents tell us. Where the pattern is consistent. Where it breaks down.
 
 ## Backtest Summary
-A table of performance metrics per hypothesis. Plain interpretation of what the numbers mean for sizing and risk management.
+Narrative interpretation of backtest performance per hypothesis. Where `avg_abnormal_return_pct` is present in the data, lead with the abnormal return as the primary metric and cite raw return as secondary context. Where raw and abnormal returns diverge by more than 5 percentage points, explicitly name the gap and attribute it to market/sector conditions (e.g. "SOFI's raw return of −43% includes approximately −15% attributable to broad market conditions; the firm-specific abnormal return of −28% is the component our short thesis was actually capturing"). Do not include a Return Attribution table here — it will be appended programmatically after this section.
 
 ## Risk Considerations
 3-5 specific risks that could invalidate the overall thesis. Be honest about uncertainty.

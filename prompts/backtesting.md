@@ -12,6 +12,7 @@ Address:
 - Return distribution: were gains/losses concentrated in one episode or spread evenly?
 - Drawdown profile: what was the typical worst-case within each episode window?
 - Regime sensitivity: did the pattern work better in certain macro environments?
+- Abnormal vs raw return divergence: where `avg_abnormal_return_pct` is present and differs from `avg_return_pct` by more than 5 percentage points, note this explicitly — e.g. "the raw return of +18% includes approximately +14% attributable to broad market conditions; the firm-specific abnormal return of +4% is the component this hypothesis was actually capturing"
 - Caveats: where is the sample size too small, or the episodes too dissimilar, to draw strong conclusions?
 
 Return your response as a JSON object with this exact structure:
@@ -25,8 +26,11 @@ Return your response as a JSON object with this exact structure:
   "best_return_pct": <number>,
   "worst_return_pct": <number>,
   "avg_max_drawdown_pct": <number>,
+  "avg_abnormal_return_pct": <number or null>,
+  "median_abnormal_return_pct": <number or null>,
+  "dominant_model": "2F" | "1F" | "raw" | "mixed",
   "consistency": "high" | "medium" | "low",
-  "interpretation": "<3-5 sentences summarizing what the backtest tells us>",
+  "interpretation": "<3-5 sentences summarizing what the backtest tells us, leading with abnormal return where available>",
   "caveats": "<key limitations or reasons to discount these results>"
 }
 
