@@ -30,6 +30,7 @@ class ExecutionTrace:
         self.theme: str = ""
         self.claude_calls: list[ClaudeCall] = []
         self.tool_calls: list[ToolCall] = []
+        self.sources: list[dict] = []  # articles: {title, source, url, publishedAt}
         self.start_time = datetime.utcnow()
 
     def set_theme(self, theme: str):
@@ -44,6 +45,15 @@ class ExecutionTrace:
                 output_tokens=usage.output_tokens,
             )
         )
+
+    def record_sources(self, articles: list[dict]):
+        """Add news articles to the deduplicated sources list."""
+        seen = {s["url"] for s in self.sources}
+        for a in articles:
+            url = a.get("url", "")
+            if url and url not in seen:
+                self.sources.append(a)
+                seen.add(url)
 
     def record_tool_call(self, agent: str, tool_name: str, inputs: dict):
         self.tool_calls.append(ToolCall(agent=agent, tool_name=tool_name, inputs=inputs))
@@ -127,6 +137,29 @@ class ExecutionTrace:
         lines.append("    OUT --> NOTE")
 
         lines.append("```")
+        return "\n".join(lines)
+
+    def sources_section(self) -> str:
+        """Render deduplicated sources sorted by date descending as a markdown section."""
+        if not self.sources:
+            return ""
+        sorted_articles = sorted(
+            self.sources,
+            key=lambda a: a.get("publishedAt", ""),
+            reverse=True,
+        )
+        lines = ["## Sources Retrieved\n"]
+        for i, a in enumerate(sorted_articles, 1):
+            title = a.get("title", "Untitled")
+            source = a.get("source", "")
+            url = a.get("url", "")
+            published = a.get("publishedAt", "")[:10]  # YYYY-MM-DD
+            try:
+                date_str = datetime.strptime(published, "%Y-%m-%d").strftime("%B %-d %Y")
+            except ValueError:
+                date_str = published
+            lines.append(f'{i}. "{title}" — {source}, {date_str}')
+            lines.append(f"   {url}\n")
         return "\n".join(lines)
 
     def summary_line(self) -> str:

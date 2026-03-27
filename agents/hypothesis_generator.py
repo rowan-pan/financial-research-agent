@@ -160,6 +160,8 @@ def generate_hypotheses(theme: dict, model: str, trace) -> list[dict]:
                 fn = TOOL_MAP[block.name]
                 output = fn(block.input)
                 trace.record_tool_call("hypothesis_generator", block.name, block.input)
+                if block.name in ("fetch_headlines", "fetch_top_financial_headlines"):
+                    trace.record_sources(output)
                 tool_results.append({
                     "type": "tool_result",
                     "tool_use_id": block.id,

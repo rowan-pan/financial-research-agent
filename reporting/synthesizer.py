@@ -21,6 +21,8 @@ def synthesize_report(
     backtest_results: list[dict],
     model: str,
     trace,
+    scan_start: str = "",
+    scan_end: str = "",
 ) -> str:
     """
     Generate the full markdown research report narrative.
@@ -43,6 +45,7 @@ def synthesize_report(
         "hypotheses": hypotheses,
         "precedents": precedents,
         "backtest_results": backtest_results,
+        "news_scan_window": f"{scan_start} to {scan_end}" if scan_start and scan_end else "",
     }
 
     response = api_call(

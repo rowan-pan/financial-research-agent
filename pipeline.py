@@ -5,7 +5,7 @@ Orchestrates all agents and reporting steps. Returns the path to the report fold
 """
 
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -88,6 +88,9 @@ def run_pipeline(
 
     # ── Step 5: Synthesis ─────────────────────────────────────────────────────
     on_status("Synthesizing report...")
+    now = datetime.utcnow()
+    scan_end = now.strftime("%B %-d, %Y")
+    scan_start = (now - timedelta(days=15)).strftime("%B %-d, %Y")
     narrative = synthesize_report(
         theme=theme,
         hypotheses=hypotheses,
@@ -95,6 +98,8 @@ def run_pipeline(
         backtest_results=backtest_results,
         model=synthesis_model,
         trace=trace,
+        scan_start=scan_start,
+        scan_end=scan_end,
     )
 
     # ── Step 6: Create report folder ─────────────────────────────────────────
@@ -122,12 +127,14 @@ def run_pipeline(
         "\n\n---\n\n## Charts\n\n"
         "![Episode Price History](charts/episodes_indexed.png)\n\n"
         "![Return Distribution](charts/return_distribution.png)\n\n"
-        "![Hypothesis Consistency](charts/correlation_heatmap.png)\n"
+        "![Risk / Return](charts/risk_return.png)\n\n"
+        "![Hypothesis Performance Summary](charts/correlation_heatmap.png)\n"
     )
 
+    sources_section = "\n\n---\n\n" + trace.sources_section() if trace.sources else ""
     execution_section = "\n\n---\n\n## Execution Trace\n\n" + trace.to_mermaid() + "\n"
 
-    report_md = title + narrative + chart_section + execution_section
+    report_md = title + narrative + chart_section + sources_section + execution_section
     (report_dir / "report.md").write_text(report_md)
 
     on_status(f"Report saved to: {report_dir}")
