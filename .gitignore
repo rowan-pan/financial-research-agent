@@ -1,0 +1,19 @@
+# Secrets
+.env
+*.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Data cache (fetched market data — reproducible, no need to track)
+data/
+
+# OS
+.DS_Store
